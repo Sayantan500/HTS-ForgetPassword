@@ -13,12 +13,16 @@ import helpdesk_ticketing_system.password_management_system.forgot_password_reco
 import helpdesk_ticketing_system.password_management_system.forgot_password_recover_system.utility.CognitoClient;
 import software.amazon.awssdk.http.HttpStatusCode;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class ForgetPasswordRequestsHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent>
 {
     private final PasswordReset passwordResetService;
     private final String EVENT;
     private final String USERNAME;
     private final Gson gson;
+    private final Map<String,String> headers;
 
     public ForgetPasswordRequestsHandler() {
         passwordResetService = new PasswordResetCognitoImpl(
@@ -27,6 +31,8 @@ public class ForgetPasswordRequestsHandler implements RequestHandler<APIGatewayP
         this.EVENT = System.getenv("event_header_param_name");
         this.USERNAME = System.getenv("username_path_param_name");
         this.gson = new Gson();
+        headers = new HashMap<>();
+        headers.put("Content-Type","application/json; charset=utf-8");
     }
 
     @Override
@@ -52,7 +58,8 @@ public class ForgetPasswordRequestsHandler implements RequestHandler<APIGatewayP
             Response resetInitResponse = passwordResetService.verifyUserAndSendOTP(username);
             return new APIGatewayProxyResponseEvent()
                     .withStatusCode(resetInitResponse.getStatus())
-                    .withBody(resetInitResponse.getMessage());
+                    .withHeaders(headers)
+                    .withBody(gson.toJson(resetInitResponse));
 
         }
         else if (eventName.compareToIgnoreCase(PasswordResetEvents.CONFIRM_AND_COMPLETE_PROCESS.toString())==0)
@@ -69,7 +76,8 @@ public class ForgetPasswordRequestsHandler implements RequestHandler<APIGatewayP
                     passwordResetService.confirmAndCompletePasswordResetProcess(username,password,confirmationCode);
             return new APIGatewayProxyResponseEvent()
                     .withStatusCode(processCompletionResponse.getStatus())
-                    .withBody(processCompletionResponse.getMessage());
+                    .withHeaders(headers)
+                    .withBody(gson.toJson(processCompletionResponse));
         }
 
         //if the event name is an Invalid one set by AWS API Gateway
